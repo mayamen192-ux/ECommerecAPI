@@ -1,0 +1,6 @@
+@ECommerecAPI_HostAddress = http://localhost:5235
+
+GET {{ECommerecAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
