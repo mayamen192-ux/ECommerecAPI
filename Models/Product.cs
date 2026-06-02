@@ -15,7 +15,7 @@ namespace ECommerecAPI.Models
     public class Product
     {
         [Key]
-        [JsonIgnore]
+   
         public int Id { get; set; }
 
         [Required]
@@ -33,7 +33,7 @@ namespace ECommerecAPI.Models
         [Range(0, int.MaxValue)]
         public int? Stock { get; set; }
 
-        [JsonIgnore]
+   
         public virtual ICollection<Review> ? Reviews { get; set; } = new List<Review>();
 
         [NotMapped]

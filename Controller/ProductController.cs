@@ -1,4 +1,5 @@
-﻿using ECommerecAPI.Models;
+﻿using ECommerecAPI.DTOs;
+using ECommerecAPI.Models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ECommerecAPI.Controller
@@ -12,44 +13,79 @@ namespace ECommerecAPI.Controller
 
 
         [HttpPost("AddNewProduct")]
-        public IActionResult AddNewProduct(Product product)
+        public IActionResult AddNewProduct(ProductDOT productDto)
         {
             try
             {
-                if (product.Price <= 0)
+                Product product = new Product
                 {
-                    return BadRequest("Product price must be greater than zero.");
-                }
+                    Name = productDto.Name,
+                    Description = productDto.Description,
+                    Price = productDto.Price,
+                    Stock = productDto.Stock ?? 0
+                };
 
-                if (product.Stock < 0)
-                {
-                    return BadRequest("Stock cannot be negative.");
-                }
                 db.Products.Add(product);
                 db.SaveChanges();
-                return Ok("Product added Successfully");
+
+                return Ok(new ProductDOT
+                {
+                    Name = product.Name,
+                    Description = product.Description,
+                    Price = product.Price,
+                    Stock = product.Stock
+                });
             }
             catch (Exception ex)
             {
                 return BadRequest(ex.Message);
             }
         }
-            [HttpGet("ListAllProducts")]
-        public IActionResult ListAllProducts()
+
+        [HttpGet("ListAllProducts")]
+        public IActionResult ListAllProducts(
+    string? name,
+    decimal? minPrice,
+    decimal? maxPrice,
+    int pageNumber = 1,
+    int pageSize = 2)
         {
-            var products = db.Products.Select(p => new
+            var query = db.Products.AsQueryable();
+
+            // Filter by name
+            if (!string.IsNullOrEmpty(name))
             {
-                p.Id,
-                p.Name,
-                p.Description,
-                p.Price,
-                p.Stock,
-                p.OverallRating
-            })
+                query = query.Where(p => p.Name.Contains(name));
+            }
+
+            // Filter by minimum price
+            if (minPrice.HasValue)
+            {
+                query = query.Where(p => p.Price >= minPrice.Value);
+            }
+
+            // Filter by maximum price
+            if (maxPrice.HasValue)
+            {
+                query = query.Where(p => p.Price <= maxPrice.Value);
+            }
+
+            // Pagination
+            var products = query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .Select(p => new
+                {
+                    p.Id,
+                    p.Name,
+                    p.Description,
+                    p.Price,
+                    p.Stock,
+                    p.OverallRating
+                })
                 .ToList();
 
             return Ok(products);
-
         }
 
 
@@ -71,7 +107,7 @@ namespace ECommerecAPI.Controller
 
 
         [HttpPut("UpdateProductById")]
-        public IActionResult UpdateProductById(int id, Product product)
+        public IActionResult UpdateProductById(int id, ProductUpdateDOT productDto)
         {
             try
             {
@@ -82,31 +118,26 @@ namespace ECommerecAPI.Controller
                     return NotFound("Product not found");
                 }
 
-                if (product.Price <= 0)
-                {
-                    return BadRequest("Product price must be greater than zero.");
-                }
-
-                if (product.Stock < 0)
-                {
-                    return BadRequest("Stock cannot be negative.");
-                }
-
-                existingProduct.Name = product.Name;
-                existingProduct.Description = product.Description;
-                existingProduct.Price = product.Price;
-                existingProduct.Stock = product.Stock;
+                existingProduct.Name = productDto.Name;
+                existingProduct.Description = productDto.Description;
+                existingProduct.Price = productDto.Price;
+                existingProduct.Stock = productDto.Stock ?? 0;
 
                 db.SaveChanges();
 
-                return Ok("Product updated successfully");
+                return Ok(new ProductUpdateDOT
+                {
+                    Name = existingProduct.Name,
+                    Description = existingProduct.Description,
+                    Price = existingProduct.Price,
+                    Stock = existingProduct.Stock
+                });
             }
             catch (Exception ex)
             {
                 return BadRequest(ex.Message);
             }
         }
-
 
     }
     }

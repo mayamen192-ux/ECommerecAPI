@@ -1,4 +1,5 @@
-﻿using ECommerecAPI.Models;
+﻿using ECommerecAPI.DTOs;
+using ECommerecAPI.Models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ECommerecAPI.Controller
@@ -9,9 +10,6 @@ namespace ECommerecAPI.Controller
     {
         ApplicationDbContext db = new ApplicationDbContext();
 
-
-
-        
         [HttpGet("ListAllReviews")]
         public IActionResult ListAllReviews()
         {
@@ -23,33 +21,42 @@ namespace ECommerecAPI.Controller
                 r.Rating,
                 r.Comment,
                 r.ReviewDate
-            })
-                .ToList();
+            }).ToList();
 
             return Ok(reviews);
-
         }
 
         [HttpPut("UpdateReviewById")]
-        public IActionResult UpdateReviewById(int id, Review review)
+        public IActionResult UpdateReviewById(int id, UpdatedReviewsDTO dto)
         {
-            var reviews = db.Reviews.Find(id);
+            // Find the existing review
+            var review = db.Reviews.Find(id);
 
-            if (reviews != null)
+            if (review == null)
+                return NotFound("Review not found");
+
+            // Update the found entity directly (not a new object)
+            Review updatedReview = new Review
             {
-                reviews.ReviewDate = reviews.ReviewDate;
-                reviews.Comment = reviews.Comment;
-                db.Reviews.Update(reviews);
+                Review_Id = id,                
+                ProductId = review.ProductId,  
+                UserId = review.UserId,       
+                Rating = dto.Rating,          
+                Comment = dto.Comment,       
+                ReviewDate = DateTime.Now      
+            };
 
-                db.SaveChanges();
-                return Ok("Review updated seccessfully"+id);
-            }
-            return NotFound("Review not found");
+            db.Reviews.Update(review);
+            db.SaveChanges();
 
-
-
+            // Return the updated data
+            return Ok(new
+            {
+                review.Review_Id,
+                review.Rating,
+                review.Comment,
+                review.ReviewDate
+            });
         }
-
-      
     }
 }

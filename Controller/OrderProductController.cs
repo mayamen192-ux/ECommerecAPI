@@ -1,4 +1,5 @@
-﻿using ECommerecAPI.Models;
+﻿using ECommerecAPI.DTOs;
+using ECommerecAPI.Models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ECommerecAPI.Controller
@@ -9,55 +10,52 @@ namespace ECommerecAPI.Controller
     {
         ApplicationDbContext db = new ApplicationDbContext();
 
-        [HttpPost("AddNewOrder")]
-        public IActionResult AddNewOrder(Order order)
+        [HttpPost("placeOrder")]
+        public IActionResult PlaceOrder(PlaceOrderDTO request)
         {
+            var user = db.Users.Find(request.UserId);
 
-            try
+            if (user == null)
             {
-                decimal totalAmount = 0;
+                return BadRequest("User not found");
+            }
 
-                // Check stock and calculate total
-                foreach (var item in order.OrderProducts)
+            Order order = new Order
+            {
+                UserId = request.UserId,
+                orderDate = DateTime.Now
+            };
+
+            db.Orders.Add(order);
+            db.SaveChanges();
+
+            List<OrderProducts> orderProducts = new List<OrderProducts>();
+
+            foreach (var item in request.Items)
+            {
+                var product = db.Products.Find(item.Pid);
+
+                if (product == null)
                 {
-                    var product = db.Products.Find(item.ProductId);
-
-                    if (product == null)
-                    {
-                        return NotFound($"Product with ID {item.ProductId} not found.");
-                    }
-
-                    if (product.Stock < item.Quantity)
-                    {
-                        return BadRequest(
-                            $"Insufficient stock for product {product.Name}. Available: {product.Stock}");
-                    }
-
-                    totalAmount += product.Price * item.Quantity;
+                    return BadRequest($"Product with ID {item.Pid} does not exist.");
                 }
 
-                // Reduce stock
-                foreach (var item in order.OrderProducts)
+                orderProducts.Add(new OrderProducts
                 {
-                    var product = db.Products.Find(item.ProductId);
-                    product.Stock -= item.Quantity;
-                }
-
-                order.orderDate = DateTime.Now;
-
-                db.Orders.Add(order);
-                db.SaveChanges();
-
-                return Ok(new
-                {
-                    Message = "Order placed successfully",
-                    TotalAmount = totalAmount
+                    OrderId = order.order_Id,
+                    ProductId = item.Pid,
+                    Quantity = item.qnt
                 });
             }
-            catch (Exception ex)
+
+            db.orderProducts.AddRange(orderProducts);
+            db.SaveChanges();
+
+            return Ok(new
             {
-                return BadRequest(ex.Message);
-            }
+                Message = "Order placed successfully",
+                OrderId = order.order_Id
+            });
         }
     }
 }

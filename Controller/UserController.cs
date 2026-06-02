@@ -1,38 +1,62 @@
-﻿using ECommerecAPI.Models;
+﻿using ECommerecAPI.DTOs;
+using ECommerecAPI.Models;
 using Microsoft.AspNetCore.Mvc;
+using System.Net.Mail;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Net.Mail;
 
-namespace ECommerecAPI.Controller
-{
+namespace ECommerecAPI.Controller;
+    
+
     [ApiController]
     [Route("api/[controller]")]
     public class UserController : ControllerBase
     {
         ApplicationDbContext db = new ApplicationDbContext();
-        [HttpPost("AddNewUser")]
-        public IActionResult AddNewUser(User user)
-        {
 
-            try
-            {
-                if (db.Users.Any(u => u.email == user.email))
-                {
-                    return BadRequest("Email already exists.");
-                }
-                user.password = HashPassword(user.password);
-                db.Users.Add(user);
-                db.SaveChanges();
-                return Ok(user);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.ToString());
-            }
+       
+
+[HttpPost("RegisterUser")]
+    public IActionResult RegisterUser([FromBody] UserRegister userDto)
+    {
+        // Validate email format
+        try
+        {
+            var email = new MailAddress(userDto.email);
         }
-      
-        [HttpPost("LoginUser")]
+        catch
+        {
+            return BadRequest("Invalid email format.");
+        }
+
+        // Check unique email
+        var existingUser = db.Users
+            .FirstOrDefault(u => u.email == userDto.email);
+
+        if (existingUser != null)
+        {
+            return BadRequest("Email already exists.");
+        }
+
+        User u = new User
+        {
+            name = userDto.name,
+            email = userDto.email,
+            phone = userDto.phone,
+            password = HashPassword(userDto.password),
+            role = "User",
+            createdAt = DateTime.Now
+        };
+
+        db.Users.Add(u);
+        db.SaveChanges();
+
+        return Ok("User registered successfully with ID = " + u.Id);
+    }
+
+    [HttpPost("LoginUser")]
 public IActionResult LoginUser(string email, string password)
 {
     try
@@ -55,12 +79,29 @@ public IActionResult LoginUser(string email, string password)
     }
 }
 
-            [HttpGet("ListAllUsers")]
-        public IActionResult ListAllUsers()
+        [HttpGet("GetAllUsers")]
+        public IActionResult GetAllUsers()
         {
             var users = db.Users.ToList();
-            return Ok(users);
 
+
+            var OutPutUsers = new List<UserOutput>();
+
+
+
+            foreach (var user in users)
+            {
+                OutPutUsers.Add(
+
+                    new UserOutput
+                    {
+                        name = user.name,
+                        email = user.email,
+                        phone = user.phone
+                    });
+
+            }
+            return Ok(OutPutUsers);
         }
 
         [HttpGet("GetUserById")]
@@ -86,4 +127,3 @@ public IActionResult LoginUser(string email, string password)
         }
        
     }
-}

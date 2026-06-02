@@ -22,7 +22,7 @@ namespace ECommerecAPI.Models
         public int ProductId { get; set; }
 
         // Navigation Property
-        [JsonIgnore]
+       
         public  virtual Product ? Product { get; set; }
 
         [Required]

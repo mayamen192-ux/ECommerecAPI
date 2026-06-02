@@ -9,19 +9,19 @@ namespace ECommerecAPI.Models
     {
         [Key]
 
-        [JsonIgnore]
+     
         public int Review_Id { get; set; }
 
         public int UserId { get; set; }
 
         [ForeignKey(nameof(UserId))]
-        [JsonIgnore]
+     
         public virtual User ? User { get; set; }
 
         public int ProductId { get; set; }
 
         [ForeignKey(nameof(ProductId))]
-        [JsonIgnore]
+     
         public virtual Product  ? Product { get; set; }
 
         [Required]

@@ -9,7 +9,7 @@ namespace ECommerecAPI.Models
     public class User
     {
         [Key]
-        [JsonIgnore]
+       
         public int Id { get; set; }
         [Required]
         public string name { get; set; }
@@ -35,11 +35,11 @@ namespace ECommerecAPI.Models
 
         //user can place many orders
 
-        [JsonIgnore]
+        
         public virtual ICollection<Order>? orders{ get; set; }
         
         //user can write many revirews
-        [JsonIgnore]
+        
         public virtual ICollection<Review>? reviews{ get; set; }
 
 
