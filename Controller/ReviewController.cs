@@ -29,27 +29,17 @@ namespace ECommerecAPI.Controller
         [HttpPut("UpdateReviewById")]
         public IActionResult UpdateReviewById(int id, UpdatedReviewsDTO dto)
         {
-            // Find the existing review
             var review = db.Reviews.Find(id);
 
             if (review == null)
                 return NotFound("Review not found");
 
-            // Update the found entity directly (not a new object)
-            Review updatedReview = new Review
-            {
-                Review_Id = id,                
-                ProductId = review.ProductId,  
-                UserId = review.UserId,       
-                Rating = dto.Rating,          
-                Comment = dto.Comment,       
-                ReviewDate = DateTime.Now      
-            };
+            review.Rating = dto.Rating;
+            review.Comment = dto.Comment;
+            review.ReviewDate = DateTime.Now;
 
-            db.Reviews.Update(review);
             db.SaveChanges();
 
-            // Return the updated data
             return Ok(new
             {
                 review.Review_Id,
