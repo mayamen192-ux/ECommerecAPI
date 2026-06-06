@@ -23,7 +23,7 @@ namespace ECommerecAPI.Models
         public ICollection<OrderProducts> ? OrderProducts { get; set; } = new List<OrderProducts>();
 
       
-        [NotMapped]
+       
         public decimal TotalAmount =>
        OrderProducts?.Sum(op => op.Quantity * op.Product.Price) ?? 0;
 

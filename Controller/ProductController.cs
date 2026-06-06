@@ -1,17 +1,24 @@
-ï»¿using ECommerecAPI.DTOs;
+using ECommerecAPI.DTOs;
 using ECommerecAPI.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ECommerecAPI.Controller
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize] //  All endpoints require authentication by default
     public class ProductController : ControllerBase
     {
+        public ApplicationDbContext _context;
 
-        ApplicationDbContext db = new ApplicationDbContext();
+        public ProductController(ApplicationDbContext context)
+        {
+            _context = context;
+        }
 
-
+        // Admin only — matches requirement "Add a new product (Admin only)"
+        [Authorize(Roles = "Admin")]
         [HttpPost("AddNewProduct")]
         public IActionResult AddNewProduct(ProductDOT productDto)
         {
@@ -25,8 +32,8 @@ namespace ECommerecAPI.Controller
                     Stock = productDto.Stock ?? 0
                 };
 
-                db.Products.Add(product);
-                db.SaveChanges();
+                _context.Products.Add(product);
+                _context.SaveChanges();
 
                 return Ok(new ProductDOT
                 {
@@ -42,35 +49,27 @@ namespace ECommerecAPI.Controller
             }
         }
 
+        // Any authenticated user can list products with pagination & filtering
+        // Inherits class-level [Authorize] — no changes needed
         [HttpGet("ListAllProducts")]
         public IActionResult ListAllProducts(
-    string? name,
-    decimal? minPrice,
-    decimal? maxPrice,
-    int pageNumber = 1,
-    int pageSize = 2)
+            string? name,
+            decimal? minPrice,
+            decimal? maxPrice,
+            int pageNumber = 1,
+            int pageSize = 2)
         {
-            var query = db.Products.AsQueryable();
+            var query = _context.Products.AsQueryable();
 
-            // Filter by name
             if (!string.IsNullOrEmpty(name))
-            {
                 query = query.Where(p => p.Name.Contains(name));
-            }
 
-            // Filter by minimum price
             if (minPrice.HasValue)
-            {
                 query = query.Where(p => p.Price >= minPrice.Value);
-            }
 
-            // Filter by maximum price
             if (maxPrice.HasValue)
-            {
                 query = query.Where(p => p.Price <= maxPrice.Value);
-            }
 
-            // Pagination
             var products = query
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
@@ -88,42 +87,43 @@ namespace ECommerecAPI.Controller
             return Ok(products);
         }
 
-
+        // Removed [AllowAnonymous] — requirement says authenticated users only
+        // Now inherits class-level [Authorize]
         [HttpGet("GetProductById")]
         public IActionResult GetProductById(int id)
         {
+            var product = _context.Products.Find(id);
 
-            var pro = db.Products.Find(id);
-            if (pro != null)
+            if (product == null)
+                return NotFound("Product not found.");
+
+            return Ok(new ProductDOT
             {
-
-                db.Users.ToList();
-                return Ok(pro);
-            }
-
-            return NotFound("Product not found");
-
+                Name = product.Name,
+                Description = product.Description,
+                Price = product.Price,
+                Stock = product.Stock
+            });
         }
 
-
+        // Admin only — matches requirement "Update product details (Admin only)"
+        [Authorize(Roles = "Admin")]
         [HttpPut("UpdateProductById")]
         public IActionResult UpdateProductById(int id, ProductUpdateDOT productDto)
         {
             try
             {
-                var existingProduct = db.Products.Find(id);
+                var existingProduct = _context.Products.Find(id);
 
                 if (existingProduct == null)
-                {
-                    return NotFound("Product not found");
-                }
+                    return NotFound("Product not found.");
 
                 existingProduct.Name = productDto.Name;
                 existingProduct.Description = productDto.Description;
                 existingProduct.Price = productDto.Price;
                 existingProduct.Stock = productDto.Stock ?? 0;
 
-                db.SaveChanges();
+                _context.SaveChanges();
 
                 return Ok(new ProductUpdateDOT
                 {
@@ -138,9 +138,5 @@ namespace ECommerecAPI.Controller
                 return BadRequest(ex.Message);
             }
         }
-
     }
-    }
-
-
-
+}
