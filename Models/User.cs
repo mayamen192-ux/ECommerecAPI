@@ -28,7 +28,7 @@ namespace ECommerecAPI.Models
         public string phone { get; set; }
         [Required]
         public string role { get; set; }
-        public bool IsActive { get; set; } = false;
+        public bool IsActive { get; set; } = true;
 
         [Required]
         public DateTime  createdAt{ get; set; }=DateTime.Now;
