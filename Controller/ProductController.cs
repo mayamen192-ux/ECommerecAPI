@@ -2,6 +2,7 @@ using ECommerecAPI.DTOs;
 using ECommerecAPI.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ECommerecAPI.Controller
 {
@@ -64,7 +65,7 @@ namespace ECommerecAPI.Controller
             }
         }
 
-        // Any authenticated user
+        // Any authenticated user — with pagination, filtering, and OverallRating
         [HttpGet("ListAllProducts")]
         public IActionResult ListAllProducts(
             string? name,
@@ -75,7 +76,10 @@ namespace ECommerecAPI.Controller
         {
             _logger.LogInformation("Listing products - Page: {Page}, Size: {Size}", pageNumber, pageSize);
 
-            var query = _context.Products.AsQueryable();
+        
+            var query = _context.Products
+                .Include(p => p.Reviews)
+                .AsQueryable();
 
             if (!string.IsNullOrEmpty(name))
                 query = query.Where(p => p.Name.Contains(name));
@@ -86,9 +90,11 @@ namespace ECommerecAPI.Controller
             if (maxPrice.HasValue)
                 query = query.Where(p => p.Price <= maxPrice.Value);
 
+        
             var products = query
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
+                .ToList()
                 .Select(p => new
                 {
                     p.Id,
@@ -96,7 +102,7 @@ namespace ECommerecAPI.Controller
                     p.Description,
                     p.Price,
                     p.Stock,
-                    p.OverallRating
+                    p.OverallRating  
                 })
                 .ToList();
 
@@ -111,7 +117,10 @@ namespace ECommerecAPI.Controller
         {
             _logger.LogInformation("Getting product by ID: {Id}", id);
 
-            var product = _context.Products.Find(id);
+           
+            var product = _context.Products
+                .Include(p => p.Reviews)
+                .FirstOrDefault(p => p.Id == id);
 
             if (product == null)
             {
@@ -121,12 +130,14 @@ namespace ECommerecAPI.Controller
 
             _logger.LogInformation("Product found: {Name}", product.Name);
 
-            return Ok(new ProductDOT
+            return Ok(new
             {
-                Name = product.Name,
-                Description = product.Description,
-                Price = product.Price,
-                Stock = product.Stock
+                product.Id,
+                product.Name,
+                product.Description,
+                product.Price,
+                product.Stock,
+                product.OverallRating  
             });
         }
 
@@ -177,7 +188,7 @@ namespace ECommerecAPI.Controller
             }
         }
 
-        // Admin only - Delete product
+        // Admin only
         [Authorize(Roles = "Admin")]
         [HttpDelete("DeleteProductById")]
         public IActionResult DeleteProductById(int id)

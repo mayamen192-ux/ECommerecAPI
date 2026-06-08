@@ -35,8 +35,10 @@ namespace ECommerecAPI.Models
 
    
         public virtual ICollection<Review> ? Reviews { get; set; } = new List<Review>();
-
         [NotMapped]
-        public decimal OverallRating { get; set; }
+        public decimal OverallRating =>
+                    Reviews != null && Reviews.Any()
+                        ? Math.Round((decimal)Reviews.Average(r => r.Rating), 2)
+                        : 0;
     }
 }

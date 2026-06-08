@@ -2,6 +2,7 @@
 using ECommerecAPI.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace ECommerecAPI.Controller
@@ -15,13 +16,14 @@ namespace ECommerecAPI.Controller
         private readonly ILogger<ReviewController> _logger;
 
         public ReviewController(
-            ILogger<ReviewController> logger, 
+            ILogger<ReviewController> logger,
             ApplicationDbContext context)
         {
             _logger = logger;
             _context = context;
         }
 
+        // Any authenticated user — get all reviews for a product with pagination
         [HttpGet("GetReviewsByProduct")]
         public IActionResult GetReviewsByProduct(
             int productId,
@@ -32,7 +34,11 @@ namespace ECommerecAPI.Controller
                 "GetReviewsByProduct called - Product ID: {ProductId} | Page: {Page} | Size: {Size}",
                 productId, pageNumber, pageSize);
 
-            var product = _context.Products.Find(productId);
+    
+            var product = _context.Products
+                .Include(p => p.Reviews)
+                .FirstOrDefault(p => p.Id == productId);
+
             if (product == null)
             {
                 _logger.LogWarning("GetReviewsByProduct failed - product not found: {ProductId}", productId);
@@ -59,14 +65,26 @@ namespace ECommerecAPI.Controller
                 "GetReviewsByProduct returned {Count} reviews for Product ID: {ProductId}",
                 reviews.Count, productId);
 
-            return Ok(reviews);
+          
+            return Ok(new
+            {
+                ProductId = productId,
+                ProductName = product.Name,
+                OverallRating = product.OverallRating,  
+                TotalReviews = reviews.Count,
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                Reviews = reviews
+            });
         }
 
+        // Authenticated user — only the review owner can update
         [HttpPut("UpdateReviewById")]
         public IActionResult UpdateReviewById(int id, [FromBody] UpdatedReviewsDTO dto)
         {
             _logger.LogInformation("UpdateReviewById called for Review ID: {ReviewId}", id);
 
+        
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (userIdClaim == null)
             {
@@ -84,6 +102,7 @@ namespace ECommerecAPI.Controller
                 return NotFound("Review not found.");
             }
 
+        
             if (review.UserId != userId)
             {
                 _logger.LogWarning(

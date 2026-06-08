@@ -13,16 +13,16 @@ namespace ECommerecAPI.Controller
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
-        private readonly EmailSending _emailService;
-        private readonly JwtService _jwt;  // only use JwtService — no private GenerateJwtToken
+        public ApplicationDbContext _context;
+        public EmailSending _emailService;
+        public JwtService _jwt;
         private readonly ILogger<AuthController> _logger;
 
         public AuthController(
             ILogger<AuthController> logger,
             ApplicationDbContext context,
             EmailSending emailService,
-            JwtService jwt)  //  inject JwtService only — no IConfiguration needed
+            JwtService jwt)
         {
             _logger = logger;
             _context = context;
@@ -30,7 +30,6 @@ namespace ECommerecAPI.Controller
             _jwt = jwt;
         }
 
-        [AllowAnonymous]
         [HttpPost("RegisterUser")]
         public IActionResult RegisterUser([FromBody] UserRegister userDto)
         {
@@ -60,19 +59,19 @@ namespace ECommerecAPI.Controller
                 phone = userDto.phone,
                 password = HashPassword(userDto.password),
                 role = "User",
-                IsActive = true,  // activate on register
                 createdAt = DateTime.Now
             };
 
             _context.Users.Add(u);
             _context.SaveChanges();
+            _emailService.SendEmail(userDto.email, "Welcome!" + userDto.name, "Thank you for registering.");
 
-            _logger.LogInformation("User registered successfully: {Email} with ID: {Id}", u.email, u.Id);
+            _logger.LogInformation("User registered successfully: {Email} with ID: {Id}", u.email, u.Id); 
 
-            _emailService.SendEmail(userDto.email, "Welcome! " + userDto.name, "Thank you for registering.");
 
-            // use JwtService — same as LoginUser
             var token = _jwt.GenerateToken(u);
+
+            _logger.LogInformation("Token generated for new user: {Email}", u.email); 
 
             return Ok(new
             {
@@ -82,15 +81,14 @@ namespace ECommerecAPI.Controller
             });
         }
 
-        [AllowAnonymous]
         [HttpPost("LoginUser")]
         public IActionResult LoginUser([FromBody] LoginDTO dto)
         {
-            _logger.LogInformation("Login attempt for email: {Email}", dto.Email);
+            _logger.LogInformation("Login attempt for email: {Email}", dto.Email); 
 
             if (!ModelState.IsValid)
             {
-                _logger.LogWarning("Login failed - invalid model state for: {Email}", dto.Email);
+                _logger.LogWarning("Login failed - invalid model state for: {Email}", dto.Email); 
                 return BadRequest(ModelState);
             }
 
@@ -99,22 +97,20 @@ namespace ECommerecAPI.Controller
                 string hashedPassword = HashPassword(dto.Password);
 
                 var user = _context.Users.FirstOrDefault(u =>
-                    u.email == dto.Email &&
-                    u.password == hashedPassword);
+                    u.email == dto.Email && u.password == hashedPassword);
 
                 if (user == null)
                 {
-                    _logger.LogWarning("Login failed - invalid credentials for: {Email}", dto.Email);
+                    _logger.LogWarning("Login failed - invalid credentials for: {Email}", dto.Email); 
                     return Unauthorized("Invalid email or password.");
                 }
 
                 if (!user.IsActive)
                 {
-                    _logger.LogWarning("Login failed - account not activated for: {Email}", dto.Email);
+                    _logger.LogWarning("Login failed - account not activated for: {Email}", dto.Email); 
                     return Unauthorized("Account is not activated. Please check your email.");
                 }
 
-                // use JwtService — same key/issuer/audience as Program.cs validation
                 var token = _jwt.GenerateToken(user);
 
                 _logger.LogInformation("Login successful for: {Email} | Role: {Role}", user.email, user.role);
@@ -122,9 +118,8 @@ namespace ECommerecAPI.Controller
                 return Ok(new
                 {
                     token,
-                    userId = user.Id,
-                    name = user.name,
-                    role = user.role
+                    role = user.role,
+                    name = user.name
                 });
             }
             catch (Exception ex)
@@ -133,13 +128,25 @@ namespace ECommerecAPI.Controller
                 return BadRequest(ex.Message);
             }
         }
-
-        // Keep for debugging — remove after fixing
         [AllowAnonymous]
-        [HttpGet("DebugHash")]
-        public IActionResult DebugHash(string password)
+        [HttpGet("DebugLogin")]
+        public IActionResult DebugLogin(string email, string password)
         {
-            return Ok(HashPassword(password));
+            string hashedPassword = HashPassword(password);
+
+            var user = _context.Users.FirstOrDefault(u => u.email == email);
+
+            if (user == null)
+                return NotFound(new { message = "User not found in DB", email });
+
+            return Ok(new
+            {
+                emailMatch = user.email == email,
+                passwordMatch = user.password == hashedPassword,
+                isActive = user.IsActive,
+                storedHash = user.password,
+                inputHash = hashedPassword
+            });
         }
 
         private static string HashPassword(string password)
@@ -148,16 +155,5 @@ namespace ECommerecAPI.Controller
             byte[] bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
             return Convert.ToHexString(bytes);
         }
-     
-        [AllowAnonymous]
-        [HttpGet("DebugConfig")]
-        public IActionResult DebugConfig()
-        {
-            return Ok(new
-            {
-                message = "If you see this, Auth controller is working",
-                time = DateTime.UtcNow
-            });
-        }
     }
-    }
+}
