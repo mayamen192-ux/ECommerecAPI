@@ -34,6 +34,13 @@ namespace ECommerecAPI
                         .GetConnectionString("DefaultConnection")));
                 builder.Services.AddScoped<EmailSending>();
                 builder.Services.AddScoped<JwtService>();
+                builder.Services.AddScoped<AuthService>();
+                builder.Services.AddScoped<UserService>();
+                builder.Services.AddScoped<ProductService>();
+                builder.Services.AddScoped<OrderProductService>();
+                builder.Services.AddScoped<OrderService>();
+                builder.Services.AddScoped<ReviewProductService>();
+                builder.Services.AddScoped<ReviewService>();
 
                 // Read JWT config
                 var jwtKey = builder.Configuration["Jwt:Key"]!;
