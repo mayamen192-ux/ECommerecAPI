@@ -19,10 +19,30 @@ namespace ECommerecAPI.Controller
 
         [HttpPost("AddNewReview")]
         public IActionResult AddNewReview([FromBody] AddReviewDTO reviewDto)
-            => _reviewProductService.AddNewReview(reviewDto, User);
+        {
+            var result = _reviewProductService.AddNewReview(reviewDto, User);
+            return ToActionResult(result);
+        }
 
         [HttpDelete("RemoveReviewById")]
         public IActionResult RemoveReviewById(int id)
-            => _reviewProductService.RemoveReviewById(id, User);
+        {
+            var result = _reviewProductService.RemoveReviewById(id, User);
+            return ToActionResult(result);
+        }
+
+        private IActionResult ToActionResult(object result)
+        {
+            var statusCode = (int)result.GetType().GetProperty("statusCode")!.GetValue(result)!;
+            return statusCode switch
+            {
+                200 => Ok(result),
+                400 => BadRequest(result),
+                401 => Unauthorized(result),
+                403 => Forbid(),
+                404 => NotFound(result),
+                _ => StatusCode(statusCode, result)
+            };
+        }
     }
 }

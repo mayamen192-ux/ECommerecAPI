@@ -1,6 +1,5 @@
 ﻿using ECommerecAPI.DTOs;
 using ECommerecAPI.Models;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.EntityFrameworkCore;
 
@@ -19,14 +18,14 @@ namespace ECommerecAPI.Services
             _context = context;
         }
 
-        public IActionResult AddNewProduct(ProductDOT productDto, ModelStateDictionary modelState)
+        public object AddNewProduct(ProductDOT productDto, ModelStateDictionary modelState)
         {
             _logger.LogInformation("Admin adding new product: {Name}", productDto.Name);
 
             if (!modelState.IsValid)
             {
                 _logger.LogWarning("Invalid model state for AddNewProduct");
-                return new BadRequestObjectResult(modelState);
+                return new { statusCode = 400, message = "Invalid model state.", errors = modelState };
             }
 
             try
@@ -44,22 +43,26 @@ namespace ECommerecAPI.Services
 
                 _logger.LogInformation("Product added successfully: {Name} with ID: {Id}", product.Name, product.Id);
 
-                return new OkObjectResult(new ProductDOT
+                return new
                 {
-                    Name = product.Name,
-                    Description = product.Description,
-                    Price = product.Price,
-                    Stock = product.Stock
-                });
+                    statusCode = 200,
+                    data = new ProductDOT
+                    {
+                        Name = product.Name,
+                        Description = product.Description,
+                        Price = product.Price,
+                        Stock = product.Stock
+                    }
+                };
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error adding product: {Name}", productDto.Name);
-                return new BadRequestObjectResult(ex.Message);
+                return new { statusCode = 400, message = ex.Message };
             }
         }
 
-        public IActionResult ListAllProducts(
+        public object ListAllProducts(
             string? name,
             decimal? minPrice,
             decimal? maxPrice,
@@ -98,10 +101,10 @@ namespace ECommerecAPI.Services
 
             _logger.LogInformation("Returned {Count} products", products.Count);
 
-            return new OkObjectResult(products);
+            return new { statusCode = 200, data = products };
         }
 
-        public IActionResult GetProductById(int id)
+        public object GetProductById(int id)
         {
             _logger.LogInformation("Getting product by ID: {Id}", id);
 
@@ -112,30 +115,34 @@ namespace ECommerecAPI.Services
             if (product == null)
             {
                 _logger.LogWarning("Product not found with ID: {Id}", id);
-                return new NotFoundObjectResult("Product not found.");
+                return new { statusCode = 404, message = "Product not found." };
             }
 
             _logger.LogInformation("Product found: {Name}", product.Name);
 
-            return new OkObjectResult(new
+            return new
             {
-                product.Id,
-                product.Name,
-                product.Description,
-                product.Price,
-                product.Stock,
-                product.OverallRating
-            });
+                statusCode = 200,
+                data = new
+                {
+                    product.Id,
+                    product.Name,
+                    product.Description,
+                    product.Price,
+                    product.Stock,
+                    product.OverallRating
+                }
+            };
         }
 
-        public IActionResult UpdateProductById(int id, ProductUpdateDOT productDto, ModelStateDictionary modelState)
+        public object UpdateProductById(int id, ProductUpdateDOT productDto, ModelStateDictionary modelState)
         {
             _logger.LogInformation("Admin updating product ID: {Id}", id);
 
             if (!modelState.IsValid)
             {
                 _logger.LogWarning("Invalid model state for UpdateProductById");
-                return new BadRequestObjectResult(modelState);
+                return new { statusCode = 400, message = "Invalid model state.", errors = modelState };
             }
 
             try
@@ -145,7 +152,7 @@ namespace ECommerecAPI.Services
                 if (existingProduct == null)
                 {
                     _logger.LogWarning("Update failed - product not found: {Id}", id);
-                    return new NotFoundObjectResult("Product not found.");
+                    return new { statusCode = 404, message = "Product not found." };
                 }
 
                 existingProduct.Name = productDto.Name;
@@ -157,22 +164,26 @@ namespace ECommerecAPI.Services
 
                 _logger.LogInformation("Product updated successfully: {Id}", id);
 
-                return new OkObjectResult(new ProductUpdateDOT
+                return new
                 {
-                    Name = existingProduct.Name,
-                    Description = existingProduct.Description,
-                    Price = existingProduct.Price,
-                    Stock = existingProduct.Stock
-                });
+                    statusCode = 200,
+                    data = new ProductUpdateDOT
+                    {
+                        Name = existingProduct.Name,
+                        Description = existingProduct.Description,
+                        Price = existingProduct.Price,
+                        Stock = existingProduct.Stock
+                    }
+                };
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating product ID: {Id}", id);
-                return new BadRequestObjectResult(ex.Message);
+                return new { statusCode = 400, message = ex.Message };
             }
         }
 
-        public IActionResult DeleteProductById(int id)
+        public object DeleteProductById(int id)
         {
             _logger.LogInformation("Admin deleting product ID: {Id}", id);
 
@@ -183,7 +194,7 @@ namespace ECommerecAPI.Services
                 if (product == null)
                 {
                     _logger.LogWarning("Delete failed - product not found: {Id}", id);
-                    return new NotFoundObjectResult("Product not found.");
+                    return new { statusCode = 404, message = "Product not found." };
                 }
 
                 _context.Products.Remove(product);
@@ -191,12 +202,12 @@ namespace ECommerecAPI.Services
 
                 _logger.LogInformation("Product deleted successfully: {Id}", id);
 
-                return new OkObjectResult("Product deleted successfully.");
+                return new { statusCode = 200, message = "Product deleted successfully." };
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting product ID: {Id}", id);
-                return new BadRequestObjectResult(ex.Message);
+                return new { statusCode = 400, message = ex.Message };
             }
         }
     }

@@ -20,7 +20,10 @@ namespace ECommerecAPI.Controller
         [Authorize(Roles = "Admin")]
         [HttpPost("AddNewProduct")]
         public IActionResult AddNewProduct([FromBody] ProductDOT productDto)
-            => _productService.AddNewProduct(productDto, ModelState);
+        {
+            var result = _productService.AddNewProduct(productDto, ModelState);
+            return ToActionResult(result);
+        }
 
         [HttpGet("ListAllProducts")]
         public IActionResult ListAllProducts(
@@ -29,20 +32,46 @@ namespace ECommerecAPI.Controller
             decimal? maxPrice,
             int pageNumber = 1,
             int pageSize = 2)
-            => _productService.ListAllProducts(name, minPrice, maxPrice, pageNumber, pageSize);
+        {
+            var result = _productService.ListAllProducts(name, minPrice, maxPrice, pageNumber, pageSize);
+            return ToActionResult(result);
+        }
 
         [HttpGet("GetProductById")]
         public IActionResult GetProductById(int id)
-            => _productService.GetProductById(id);
+        {
+            var result = _productService.GetProductById(id);
+            return ToActionResult(result);
+        }
 
         [Authorize(Roles = "Admin")]
         [HttpPut("UpdateProductById")]
         public IActionResult UpdateProductById(int id, [FromBody] ProductUpdateDOT productDto)
-            => _productService.UpdateProductById(id, productDto, ModelState);
+        {
+            var result = _productService.UpdateProductById(id, productDto, ModelState);
+            return ToActionResult(result);
+        }
 
         [Authorize(Roles = "Admin")]
         [HttpDelete("DeleteProductById")]
         public IActionResult DeleteProductById(int id)
-            => _productService.DeleteProductById(id);
+        {
+            var result = _productService.DeleteProductById(id);
+            return ToActionResult(result);
+        }
+
+        private IActionResult ToActionResult(object result)
+        {
+            var statusCode = (int)result.GetType().GetProperty("statusCode")!.GetValue(result)!;
+            return statusCode switch
+            {
+                200 => Ok(result),
+                400 => BadRequest(result),
+                401 => Unauthorized(result),
+                403 => Forbid(),
+                404 => NotFound(result),
+                _ => StatusCode(statusCode, result)
+            };
+        }
     }
 }

@@ -1,6 +1,5 @@
 ﻿using ECommerecAPI.DTOs;
 using ECommerecAPI.Models;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -27,7 +26,7 @@ namespace ECommerecAPI.Services
             _jwt = jwt;
         }
 
-        public IActionResult GetAllUsers()
+        public object GetAllUsers()
         {
             _logger.LogInformation("Admin requested all users list");
 
@@ -51,10 +50,11 @@ namespace ECommerecAPI.Services
             }).ToList();
 
             _logger.LogInformation("Returned {Count} users", outputUsers.Count);
-            return new OkObjectResult(outputUsers);
+
+            return new { statusCode = 200, data = outputUsers };
         }
 
-        public IActionResult GetUserById(int id, ClaimsPrincipal currentUser)
+        public object GetUserById(int id, ClaimsPrincipal currentUser)
         {
             _logger.LogInformation("GetUserById called for ID: {Id}", id);
 
@@ -62,7 +62,7 @@ namespace ECommerecAPI.Services
             if (requestingUserIdClaim == null)
             {
                 _logger.LogWarning("GetUserById failed - invalid token");
-                return new UnauthorizedObjectResult("Invalid token.");
+                return new { statusCode = 401, message = "Invalid token." };
             }
 
             int requestingUserId = int.Parse(requestingUserIdClaim);
@@ -70,23 +70,28 @@ namespace ECommerecAPI.Services
             {
                 _logger.LogWarning("User {RequestingId} tried to access User {TargetId} - Forbidden",
                     requestingUserId, id);
-                return new ForbidResult();
+                return new { statusCode = 403, message = "Access denied." };
             }
 
             var user = _context.Users.Find(id);
             if (user == null)
             {
                 _logger.LogWarning("User not found with ID: {Id}", id);
-                return new NotFoundObjectResult("User not found.");
+                return new { statusCode = 404, message = "User not found." };
             }
 
             _logger.LogInformation("User {Id} data returned successfully", id);
-            return new OkObjectResult(new UserOutput
+
+            return new
             {
-                name = user.name,
-                email = user.email,
-                phone = user.phone
-            });
+                statusCode = 200,
+                data = new UserOutput
+                {
+                    name = user.name,
+                    email = user.email,
+                    phone = user.phone
+                }
+            };
         }
 
         public static string HashPassword(string password)

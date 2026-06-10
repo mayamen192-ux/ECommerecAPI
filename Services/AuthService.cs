@@ -26,7 +26,7 @@ namespace ECommerecAPI.Services
             _jwt = jwt;
         }
 
-        public IActionResult RegisterUser(UserRegister userDto)
+        public object RegisterUser(UserRegister userDto)
         {
             _logger.LogInformation("Register attempt for email: {Email}", userDto.email);
 
@@ -34,14 +34,14 @@ namespace ECommerecAPI.Services
             catch
             {
                 _logger.LogWarning("Invalid email format: {Email}", userDto.email);
-                return new BadRequestObjectResult("Invalid email format.");
+                return new { statusCode = 400, message = "Invalid email format." };
             }
 
             var existingUser = _context.Users.FirstOrDefault(u => u.email == userDto.email);
             if (existingUser != null)
             {
                 _logger.LogWarning("Registration failed - email already exists: {Email}", userDto.email);
-                return new BadRequestObjectResult("Email already exists.");
+                return new { statusCode = 400, message = "Email already exists." };
             }
 
             var u = new User
@@ -64,15 +64,16 @@ namespace ECommerecAPI.Services
 
             _logger.LogInformation("Token generated for new user: {Email}", u.email);
 
-            return new OkObjectResult(new
+            return new
             {
+                statusCode = 200,
                 message = "Registration successful.",
                 userId = u.Id,
                 token
-            });
+            };
         }
 
-        public IActionResult LoginUser(LoginDTO dto)
+        public object LoginUser(LoginDTO dto)
         {
             _logger.LogInformation("Login attempt for email: {Email}", dto.Email);
 
@@ -86,45 +87,46 @@ namespace ECommerecAPI.Services
                 if (user == null)
                 {
                     _logger.LogWarning("Login failed - invalid credentials for: {Email}", dto.Email);
-                    return new UnauthorizedObjectResult("Invalid email or password.");
+                    return new { statusCode = 401, message = "Invalid email or password." };
                 }
 
                 if (!user.IsActive)
                 {
                     _logger.LogWarning("Login failed - account not activated for: {Email}", dto.Email);
-                    return new UnauthorizedObjectResult("Account is not activated. Please check your email.");
+                    return new { statusCode = 401, message = "Account is not activated. Please check your email." };
                 }
 
                 var token = _jwt.GenerateToken(user);
 
                 _logger.LogInformation("Login successful for: {Email} | Role: {Role}", user.email, user.role);
 
-                return new OkObjectResult(new { token, role = user.role, name = user.name });
+                return new { statusCode = 200, token, role = user.role, name = user.name };
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error during login for: {Email}", dto.Email);
-                return new BadRequestObjectResult(ex.Message);
+                return new { statusCode = 400, message = ex.Message };
             }
         }
 
-        public IActionResult DebugLogin(string email, string password)
+        public object DebugLogin(string email, string password)
         {
             string hashedPassword = HashPassword(password);
 
             var user = _context.Users.FirstOrDefault(u => u.email == email);
 
             if (user == null)
-                return new NotFoundObjectResult(new { message = "User not found in DB", email });
+                return new { statusCode = 404, message = "User not found in DB", email };
 
-            return new OkObjectResult(new
+            return new
             {
+                statusCode = 200,
                 emailMatch = user.email == email,
                 passwordMatch = user.password == hashedPassword,
                 isActive = user.IsActive,
                 storedHash = user.password,
                 inputHash = hashedPassword
-            });
+            };
         }
 
         private static string HashPassword(string password)

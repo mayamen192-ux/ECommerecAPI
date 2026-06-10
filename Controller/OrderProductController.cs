@@ -19,6 +19,23 @@ namespace ECommerecAPI.Controller
 
         [HttpPost("placeOrder")]
         public IActionResult PlaceOrder(PlaceOrderDTO request)
-            => _orderProductService.PlaceOrder(request, User);
+        {
+            var result = _orderProductService.PlaceOrder(request, User);
+            return ToActionResult(result);
+        }
+
+        private IActionResult ToActionResult(object result)
+        {
+            var statusCode = (int)result.GetType().GetProperty("statusCode")!.GetValue(result)!;
+            return statusCode switch
+            {
+                200 => Ok(result),
+                400 => BadRequest(result),
+                401 => Unauthorized(result),
+                403 => Forbid(),
+                404 => NotFound(result),
+                _ => StatusCode(statusCode, result)
+            };
+        }
     }
 }

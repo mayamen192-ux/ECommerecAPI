@@ -1,6 +1,5 @@
 ﻿using ECommerecAPI.DTOs;
 using ECommerecAPI.Models;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
@@ -19,13 +18,13 @@ namespace ECommerecAPI.Services
             _context = context;
         }
 
-        public IActionResult GetOrders(ClaimsPrincipal currentUser)
+        public object GetOrders(ClaimsPrincipal currentUser)
         {
             var userIdClaim = currentUser.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (userIdClaim == null)
             {
                 _logger.LogWarning("GetOrders failed - invalid token, no user ID claim");
-                return new UnauthorizedObjectResult("Invalid token.");
+                return new { statusCode = 401, message = "Invalid token." };
             }
 
             int userId = int.Parse(userIdClaim);
@@ -47,16 +46,16 @@ namespace ECommerecAPI.Services
             _logger.LogInformation("GetOrders returned {Count} orders for User ID: {UserId}",
                 output.Count, userId);
 
-            return new OkObjectResult(output);
+            return new { statusCode = 200, data = output };
         }
 
-        public IActionResult GetOrderById(int id, ClaimsPrincipal currentUser)
+        public object GetOrderById(int id, ClaimsPrincipal currentUser)
         {
             var userIdClaim = currentUser.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (userIdClaim == null)
             {
                 _logger.LogWarning("GetOrderById failed - invalid token, no user ID claim");
-                return new UnauthorizedObjectResult("Invalid token.");
+                return new { statusCode = 401, message = "Invalid token." };
             }
 
             int userId = int.Parse(userIdClaim);
@@ -71,7 +70,7 @@ namespace ECommerecAPI.Services
             if (order == null)
             {
                 _logger.LogWarning("GetOrderById failed - order not found: {OrderId}", id);
-                return new NotFoundObjectResult("Order not found.");
+                return new { statusCode = 404, message = "Order not found." };
             }
 
             if (order.UserId != userId && !currentUser.IsInRole("Admin"))
@@ -79,19 +78,23 @@ namespace ECommerecAPI.Services
                 _logger.LogWarning(
                     "GetOrderById forbidden - User {UserId} tried to access Order {OrderId} owned by User {OwnerId}",
                     userId, id, order.UserId);
-                return new ForbidResult();
+                return new { statusCode = 403, message = "Access denied." };
             }
 
             _logger.LogInformation(
                 "GetOrderById success - Order ID: {OrderId} | Total: {Total} | Date: {Date}",
                 order.order_Id, order.TotalAmount, order.orderDate);
 
-            return new OkObjectResult(new OrderOutput
+            return new
             {
-                order_Id = order.order_Id,
-                orderDate = order.orderDate,
-                totalAmount = order.TotalAmount
-            });
+                statusCode = 200,
+                data = new OrderOutput
+                {
+                    order_Id = order.order_Id,
+                    orderDate = order.orderDate,
+                    totalAmount = order.TotalAmount
+                }
+            };
         }
     }
 }

@@ -18,10 +18,30 @@ namespace ECommerecAPI.Controller
 
         [HttpGet("GetOrders")]
         public IActionResult GetOrders()
-            => _orderService.GetOrders(User);
+        {
+            var result = _orderService.GetOrders(User);
+            return ToActionResult(result);
+        }
 
         [HttpGet("GetOrderById")]
         public IActionResult GetOrderById(int id)
-            => _orderService.GetOrderById(id, User);
+        {
+            var result = _orderService.GetOrderById(id, User);
+            return ToActionResult(result);
+        }
+
+        private IActionResult ToActionResult(object result)
+        {
+            var statusCode = (int)result.GetType().GetProperty("statusCode")!.GetValue(result)!;
+            return statusCode switch
+            {
+                200 => Ok(result),
+                400 => BadRequest(result),
+                401 => Unauthorized(result),
+                403 => Forbid(),
+                404 => NotFound(result),
+                _ => StatusCode(statusCode, result)
+            };
+        }
     }
 }

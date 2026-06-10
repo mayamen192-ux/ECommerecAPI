@@ -1,6 +1,5 @@
 ﻿using ECommerecAPI.DTOs;
 using ECommerecAPI.Models;
-using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
 namespace ECommerecAPI.Services
@@ -18,7 +17,7 @@ namespace ECommerecAPI.Services
             _context = context;
         }
 
-        public IActionResult PlaceOrder(PlaceOrderDTO request, ClaimsPrincipal currentUser)
+        public object PlaceOrder(PlaceOrderDTO request, ClaimsPrincipal currentUser)
         {
             _logger.LogInformation("PlaceOrder called with {ItemCount} items", request.Items.Count);
 
@@ -26,7 +25,7 @@ namespace ECommerecAPI.Services
             if (userIdClaim == null)
             {
                 _logger.LogWarning("PlaceOrder failed - invalid token, no user ID claim");
-                return new UnauthorizedObjectResult("Invalid token.");
+                return new { statusCode = 401, message = "Invalid token." };
             }
 
             int userId = int.Parse(userIdClaim);
@@ -36,7 +35,7 @@ namespace ECommerecAPI.Services
             if (user == null)
             {
                 _logger.LogWarning("PlaceOrder failed - user not found: {UserId}", userId);
-                return new NotFoundObjectResult("User not found.");
+                return new { statusCode = 404, message = "User not found." };
             }
 
             var resolvedItems = new List<(OrderProducts orderProduct, Product product, int quantity)>();
@@ -48,7 +47,7 @@ namespace ECommerecAPI.Services
                 if (product == null)
                 {
                     _logger.LogWarning("PlaceOrder failed - product not found: {ProductId}", item.Pid);
-                    return new NotFoundObjectResult($"Product with ID {item.Pid} does not exist.");
+                    return new { statusCode = 404, message = $"Product with ID {item.Pid} does not exist." };
                 }
 
                 if (product.Stock < item.qnt)
@@ -58,9 +57,12 @@ namespace ECommerecAPI.Services
                         "Available: {Available}, Requested: {Requested}",
                         product.Name, product.Stock, item.qnt);
 
-                    return new BadRequestObjectResult(
-                        $"Insufficient stock for product '{product.Name}'. " +
-                        $"Available: {product.Stock}, Requested: {item.qnt}.");
+                    return new
+                    {
+                        statusCode = 400,
+                        message = $"Insufficient stock for product '{product.Name}'. " +
+                                  $"Available: {product.Stock}, Requested: {item.qnt}."
+                    };
                 }
 
                 totalAmount += product.Price * item.qnt;
@@ -111,13 +113,17 @@ namespace ECommerecAPI.Services
                 "Order placed successfully. OrderID: {OrderId} | Total: {Total} | Items: {Count}",
                 order.order_Id, totalAmount, orderProducts.Count);
 
-            return new OkObjectResult(new
+            return new
             {
-                Message = "Order placed successfully.",
-                OrderId = order.order_Id,
-                TotalAmount = totalAmount,
-                ItemsOrdered = orderProducts.Count
-            });
+                statusCode = 200,
+                data = new
+                {
+                    message = "Order placed successfully.",
+                    orderId = order.order_Id,
+                    totalAmount,
+                    itemsOrdered = orderProducts.Count
+                }
+            };
         }
     }
 }

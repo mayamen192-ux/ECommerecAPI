@@ -18,15 +18,38 @@ namespace ECommerecAPI.Controller
 
         [HttpPost("RegisterUser")]
         public IActionResult RegisterUser([FromBody] UserRegister userDto)
-            => _authService.RegisterUser(userDto);
+        {
+            var result = _authService.RegisterUser(userDto);
+            return ToActionResult(result);
+        }
 
         [HttpPost("LoginUser")]
         public IActionResult LoginUser([FromBody] LoginDTO dto)
-            => _authService.LoginUser(dto);
+        {
+            var result = _authService.LoginUser(dto);
+            return ToActionResult(result);
+        }
 
         [AllowAnonymous]
         [HttpGet("DebugLogin")]
         public IActionResult DebugLogin(string email, string password)
-            => _authService.DebugLogin(email, password);
+        {
+            var result = _authService.DebugLogin(email, password);
+            return ToActionResult(result);
+        }
+
+        private IActionResult ToActionResult(object result)
+        {
+            var statusCode = (int)result.GetType().GetProperty("statusCode")!.GetValue(result)!;
+            return statusCode switch
+            {
+                200 => Ok(result),
+                400 => BadRequest(result),
+                401 => Unauthorized(result),
+                404 => NotFound(result),
+                403 => Forbid(),
+                _ => StatusCode(statusCode, result)
+            };
+        }
     }
 }

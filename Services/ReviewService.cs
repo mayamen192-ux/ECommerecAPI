@@ -1,6 +1,5 @@
 ﻿using ECommerecAPI.DTOs;
 using ECommerecAPI.Models;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
@@ -19,7 +18,7 @@ namespace ECommerecAPI.Services
             _context = context;
         }
 
-        public IActionResult GetReviewsByProduct(int productId, int pageNumber, int pageSize)
+        public object GetReviewsByProduct(int productId, int pageNumber, int pageSize)
         {
             _logger.LogInformation(
                 "GetReviewsByProduct called - Product ID: {ProductId} | Page: {Page} | Size: {Size}",
@@ -32,7 +31,7 @@ namespace ECommerecAPI.Services
             if (product == null)
             {
                 _logger.LogWarning("GetReviewsByProduct failed - product not found: {ProductId}", productId);
-                return new NotFoundObjectResult("Product not found.");
+                return new { statusCode = 404, message = "Product not found." };
             }
 
             var reviews = _context.Reviews
@@ -55,19 +54,23 @@ namespace ECommerecAPI.Services
                 "GetReviewsByProduct returned {Count} reviews for Product ID: {ProductId}",
                 reviews.Count, productId);
 
-            return new OkObjectResult(new
+            return new
             {
-                ProductId = productId,
-                ProductName = product.Name,
-                OverallRating = product.OverallRating,
-                TotalReviews = reviews.Count,
-                PageNumber = pageNumber,
-                PageSize = pageSize,
-                Reviews = reviews
-            });
+                statusCode = 200,
+                data = new
+                {
+                    productId,
+                    productName = product.Name,
+                    overallRating = product.OverallRating,
+                    totalReviews = reviews.Count,
+                    pageNumber,
+                    pageSize,
+                    reviews
+                }
+            };
         }
 
-        public IActionResult UpdateReviewById(int id, UpdatedReviewsDTO dto, ClaimsPrincipal currentUser)
+        public object UpdateReviewById(int id, UpdatedReviewsDTO dto, ClaimsPrincipal currentUser)
         {
             _logger.LogInformation("UpdateReviewById called for Review ID: {ReviewId}", id);
 
@@ -75,7 +78,7 @@ namespace ECommerecAPI.Services
             if (userIdClaim == null)
             {
                 _logger.LogWarning("UpdateReviewById failed - invalid token, no user ID claim");
-                return new UnauthorizedObjectResult("Invalid token.");
+                return new { statusCode = 401, message = "Invalid token." };
             }
 
             int userId = int.Parse(userIdClaim);
@@ -85,7 +88,7 @@ namespace ECommerecAPI.Services
             if (review == null)
             {
                 _logger.LogWarning("UpdateReviewById failed - review not found: {ReviewId}", id);
-                return new NotFoundObjectResult("Review not found.");
+                return new { statusCode = 404, message = "Review not found." };
             }
 
             if (review.UserId != userId)
@@ -93,7 +96,7 @@ namespace ECommerecAPI.Services
                 _logger.LogWarning(
                     "UpdateReviewById forbidden - User {UserId} tried to update Review {ReviewId} owned by User {OwnerId}",
                     userId, id, review.UserId);
-                return new ForbidResult();
+                return new { statusCode = 403, message = "Access denied." };
             }
 
             review.Rating = dto.Rating;
@@ -106,13 +109,17 @@ namespace ECommerecAPI.Services
                 "Review updated successfully - Review ID: {ReviewId} | Rating: {Rating} | User ID: {UserId}",
                 review.Review_Id, review.Rating, userId);
 
-            return new OkObjectResult(new
+            return new
             {
-                review.Review_Id,
-                review.Rating,
-                review.Comment,
-                review.ReviewDate
-            });
+                statusCode = 200,
+                data = new
+                {
+                    review.Review_Id,
+                    review.Rating,
+                    review.Comment,
+                    review.ReviewDate
+                }
+            };
         }
     }
 }
